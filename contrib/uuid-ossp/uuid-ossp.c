@@ -36,8 +36,6 @@
 #include <ossp/uuid.h>
 #elif defined(HAVE_UUID_UUID_H)
 #include <uuid/uuid.h>
-#else
-#error "please use configure's --with-uuid switch to select a UUID library"
 #endif
 
 #undef uuid_hash
@@ -115,7 +113,7 @@ PG_FUNCTION_INFO_V1(uuid_generate_v1mc);
 PG_FUNCTION_INFO_V1(uuid_generate_v3);
 PG_FUNCTION_INFO_V1(uuid_generate_v4);
 PG_FUNCTION_INFO_V1(uuid_generate_v5);
-
+PG_FUNCTION_INFO_V1(sys_guid);
 #ifdef HAVE_UUID_OSSP
 
 static void
@@ -548,5 +546,99 @@ uuid_generate_v5(PG_FUNCTION_ARGS)
 #else
 	return uuid_generate_internal(UUID_MAKE_V5, (unsigned char *) ns,
 								  VARDATA_ANY(name), VARSIZE_ANY_EXHDR(name));
+#endif
+}
+
+
+Datum
+sys_guid(PG_FUNCTION_ARGS)
+{
+#ifdef HAVE_UUID_OSSP
+	uuid_t      *uuid;
+	uuid_rc_t   rc;
+	text        *result;
+	unsigned char *uuid_bytes;
+	char        *output;
+	int         i;
+	char        log_buf[33];
+
+	static const char hex_digits[] = "0123456789ABCDEF";
+
+	elog(INFO, "sys_guid function called (HAVE_UUID_OSSP)");
+
+	uuid = get_cached_uuid_t(0);
+	rc = uuid_make(uuid, UUID_MAKE_V1, NULL, NULL);
+	if (rc != UUID_RC_OK) {
+		pguuid_complain(rc);
+		elog(ERROR, "Failed to generate UUID, error code: %d", rc);
+	}
+
+	uuid_bytes = (unsigned char *) uuid;
+
+	result = (text *) palloc(VARHDRSZ + 32 + 1);
+	output = (char *) VARDATA(result);
+
+	for (i = 0; i < 16; i++) {
+		output[i*2]     = hex_digits[(uuid_bytes[i] >> 4) & 0xF];
+		output[i*2 + 1] = hex_digits[uuid_bytes[i] & 0xF];
+	}
+	output[32] = '\0';
+	SET_VARSIZE(result, VARHDRSZ + 32);
+
+	memcpy(log_buf, output, 32);
+	log_buf[32] = '\0';
+	elog(NOTICE, "Generated SYS_GUID: %s", log_buf);
+
+	return CStringGetTextDatum(output);
+#elif defined(HAVE_UUID_E2FS)
+	uuid_t		uu;
+	char		strbuf[37];
+	char		*temp_str;
+	text		*result;
+	int			i, j;
+
+	elog(INFO, "sys_guid function called (HAVE_UUID_E2FS)");
+
+	uuid_generate_random(uu);
+	uuid_unparse(uu, strbuf);
+
+	temp_str = palloc(33);
+	j = 0;
+	for (i = 0; strbuf[i] != '\0'; i++) {
+		if (strbuf[i] != '-') {
+			temp_str[j++] = pg_toupper(strbuf[i]);
+		}
+	}
+	temp_str[j] = '\0';
+
+	result = (text *) palloc(VARHDRSZ + 32 + 1);
+	memcpy(VARDATA(result), temp_str, 32);
+	((char *)VARDATA(result))[32] = '\0';
+	SET_VARSIZE(result, VARHDRSZ + 32);
+	elog(NOTICE, "Generated SYS_GUID: %s", temp_str);
+	pfree(temp_str);
+
+	PG_RETURN_TEXT_P(result);
+#else
+	unsigned char bytes[16];
+	char		temp_str[33];
+	text		*result;
+	int			i;
+
+	elog(INFO, "sys_guid function called (fallback)");
+
+	for (i = 0; i < 16; i++) {
+		bytes[i] = (unsigned char)arc4random();
+		sprintf(&temp_str[i*2], "%02X", bytes[i]);
+	}
+	temp_str[32] = '\0';
+
+	result = (text *) palloc(VARHDRSZ + 32 + 1);
+	memcpy(VARDATA(result), temp_str, 32);
+	((char *)VARDATA(result))[32] = '\0';
+	SET_VARSIZE(result, VARHDRSZ + 32);
+	elog(NOTICE, "Generated SYS_GUID: %s", temp_str);
+
+	PG_RETURN_TEXT_P(result);
 #endif
 }

@@ -52,3 +52,9 @@ CREATE FUNCTION uuid_generate_v5(namespace uuid, name text)
 RETURNS uuid
 AS 'MODULE_PATHNAME', 'uuid_generate_v5'
 IMMUTABLE STRICT LANGUAGE C PARALLEL SAFE;
+
+-- 暂时放到public命名空间下边，方便测试调用，后续放在哪里咨询一下
+CREATE OR REPLACE FUNCTION public.sys_guid()
+    RETURNS text
+AS 'MODULE_PATHNAME', 'sys_guid'
+VOLATILE STRICT LANGUAGE C PARALLEL SAFE;

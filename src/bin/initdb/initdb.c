@@ -298,6 +298,7 @@ static void setup_schema(FILE *cmdfd);
 static void load_plpgsql(FILE *cmdfd);
 static void load_plisql(FILE *cmdfd);
 static void load_ivorysql_ora(FILE *cmdfd);
+static void load_uuid_ossp(FILE *cmdfd);
 static void vacuum_db(FILE *cmdfd);
 static void make_template0(FILE *cmdfd);
 static void make_postgres(FILE *cmdfd);
@@ -2006,6 +2007,17 @@ load_ivorysql_ora(FILE *cmdfd)
 }
 
 /*
+ * load uuid_ossp
+ */
+static void
+load_uuid_ossp(FILE *cmdfd)
+{
+	PG_CMD_PUTS("set ivorysql.compatible_mode to pg;\n\n");
+	PG_CMD_PUTS("CREATE EXTENSION \"uuid-ossp\";\n\n");
+	PG_CMD_PUTS("set ivorysql.compatible_mode to oracle;\n\n");
+}
+
+/*
  * clean everything up in template1
  */
 static void
@@ -3201,6 +3213,7 @@ initialize_data_directory(void)
 		setup_run_file(cmdfd, preload_ora_misc);
 		load_plisql(cmdfd);
 		load_ivorysql_ora(cmdfd);
+		load_uuid_ossp(cmdfd);
 	}
 
 	vacuum_db(cmdfd);

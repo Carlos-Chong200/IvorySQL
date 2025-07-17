@@ -13,3 +13,8 @@ ALTER FUNCTION uuid_generate_v1mc() PARALLEL SAFE;
 ALTER FUNCTION uuid_generate_v3(uuid, text) PARALLEL SAFE;
 ALTER FUNCTION uuid_generate_v4() PARALLEL SAFE;
 ALTER FUNCTION uuid_generate_v5(uuid, text) PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION public.sys_guid()
+    RETURNS text
+AS 'MODULE_PATHNAME', 'sys_guid'
+VOLATILE STRICT LANGUAGE C PARALLEL SAFE;

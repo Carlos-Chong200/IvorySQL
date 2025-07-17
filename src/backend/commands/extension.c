@@ -149,7 +149,9 @@ get_extension_oid(const char *extname, bool missing_ok)
 	SysScanDesc scandesc;
 	HeapTuple	tuple;
 	ScanKeyData entry[1];
-
+	if(strcmp(extname, "UUID-OSSP") == 0){
+		extname = "uuid-ossp";
+	}
 	rel = table_open(ExtensionRelationId, AccessShareLock);
 
 	ScanKeyInit(&entry[0],
@@ -485,6 +487,9 @@ parse_extension_control_file(ExtensionControlFile *control,
 	/*
 	 * Locate the file to read.  Auxiliary files are optional.
 	 */
+	if(strcmp(control->name, "UUID-OSSP") == 0){
+		strlcpy(control->name, "uuid-ossp", MAXPGPATH);
+	}
 	if (version)
 		filename = get_extension_aux_control_filename(control, version);
 	else
@@ -1784,6 +1789,9 @@ CreateExtension(ParseState *pstate, CreateExtensionStmt *stmt)
 	 * in case of race conditions; but this is a friendlier error message, and
 	 * besides we need a check to support IF NOT EXISTS.
 	 */
+	if(strcmp(stmt->extname, "UUID-OSSP") == 0){
+		stmt->extname = "uuid-ossp";
+	}
 	if (get_extension_oid(stmt->extname, true) != InvalidOid)
 	{
 		if (stmt->if_not_exists)
@@ -3001,6 +3009,9 @@ ExecAlterExtensionStmt(ParseState *pstate, AlterExtensionStmt *stmt)
 	ListCell   *lc;
 	ObjectAddress address;
 
+	if(strcmp(stmt->extname, "UUID-OSSP") == 0){
+		stmt->extname = "uuid-ossp";
+	}
 	/*
 	 * We use global variables to track the extension being created, so we can
 	 * create/update only one extension at the same time.
